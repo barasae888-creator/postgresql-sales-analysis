@@ -6,7 +6,7 @@ SQL data cleaning and sales analysis using PostgreSQL
 ## Project Overview
 This project demonstrates SQL-based data cleaning and exploratory sales analysis using PostgreSQL.
 
-##Tools Used
+Tools Used
 - PostgreSQL
 - DBeaver
 
