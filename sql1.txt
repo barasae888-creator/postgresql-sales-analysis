@@ -1,0 +1,86 @@
+
+drop table if exists orders_raw_clean;
+
+create table orders_raw_clean as
+select * from orders_raw;
+
+select *from orders_raw_clean
+
+
+----Changing date format to a standard
+create or replace function safe_date(txt text, fmt text)
+returns date as $$
+begin
+    return to_date(txt, fmt);
+exception when others then
+    return null;
+end;
+$$ language plpgsql;
+begin;
+
+----Standardizing column values
+update  orders_raw_clean
+set email = lower(trim(email)),
+    order_id = upper(order_id),
+    customer_name = initcap(regexp_replace(trim(customer_name), '\s+', ' ', 'g')),
+    city = initcap(regexp_replace(trim(city), '\s+', ' ', 'g')),
+    order_date = case
+        when trim(order_date) ~ '^\d{4}-\d{2}-\d{2}$' then safe_date(trim(order_date), 'YYYY-MM-DD')
+        when trim(order_date) ~ '^\d{2}/\d{2}/\d{4}$' then safe_date(trim(order_date), 'DD/MM/YYYY')
+        when trim(order_date) ~ '^\d{1,2}-[A-Za-z]{3}-\d{4}$' then safe_date(trim(order_date), 'DD-Mon-YYYY')
+    end;
+
+UPDATE orders_raw_clean orc 
+SET status = CASE
+    WHEN LOWER(TRIM(status)) IN ('completed', 'complete')
+        THEN 'Completed'
+    WHEN LOWER(TRIM(status)) IN ('cancelled', 'canceled')
+        THEN 'Cancelled'
+    WHEN LOWER(TRIM(status)) = 'pending'
+        THEN 'Pending'
+    WHEN LOWER(TRIM(status)) IN ('refunded', 'refund')
+        THEN 'Refunded'
+    WHEN LOWER(TRIM(status)) = 'shipped'
+        THEN 'Shipped'
+    ELSE TRIM(status)
+END;
+
+UPDATE orders_raw_clean orc 
+SET phone = CASE
+    WHEN REGEXP_REPLACE(phone, '[^0-9]', '', 'g')
+         ~ '^254[17][0-9]{8}$'
+        THEN '+' || REGEXP_REPLACE(phone, '[^0-9]', '', 'g')
+
+    WHEN REGEXP_REPLACE(phone, '[^0-9]', '', 'g')
+         ~ '^0[17][0-9]{8}$'
+        THEN '+254' || SUBSTRING(
+            REGEXP_REPLACE(phone, '[^0-9]', '', 'g') FROM 2
+        )
+
+    WHEN REGEXP_REPLACE(phone, '[^0-9]', '', 'g')
+         ~ '^[17][0-9]{8}$'
+        THEN '+254' || REGEXP_REPLACE(phone, '[^0-9]', '', 'g')
+
+    ELSE phone
+END
+WHERE phone IS NOT NULL;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
